@@ -57,7 +57,7 @@ public:
      * @exception std::bad_array_new_length 超出最大尺寸
      * @exception std::bad_alloc 内存分配失败
      */
-    pointer allocate(size_type n, const void *)
+    pointer allocate(size_type n, const void * = nullptr)
     {
         std::lock_guard<std::mutex> lock(_Mutex);
 
@@ -72,7 +72,7 @@ public:
      * @param ptr 要释放的内存指针
      * @param n 元素个数，忽略
      */
-    void deallocate(pointer ptr, size_type)
+    void deallocate(pointer ptr, size_type = 0)
     {
         std::lock_guard<std::mutex> lock(_Mutex);
 
