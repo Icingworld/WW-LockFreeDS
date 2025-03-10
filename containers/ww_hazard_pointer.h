@@ -49,22 +49,18 @@ public:
 class hazard_pointer
 {
 private:
-    static constexpr unsigned int _Max_hazard_pointers = 128;               // 最大风险指针数量
-    static thread_local hazard_pointer _Current_hazard_pointer;             // 当前线程的风险指针
-    static hazard_pointer _Global_hazard_pointer[_Max_hazard_pointers];     // 全局风险指针数组
-
-    void * _Protect_ptr;                                                    // 保护的指针
+    std::atomic<void *> * _Protect_ptr;       // 指向保护指针的指针
 
 public:
     hazard_pointer() noexcept
-        : _Protect_ptr(nullptr)
+        : _Protect_ptr(::new std::atomic<void *>(nullptr))
     {
     }
 
     hazard_pointer(hazard_pointer && _Other) noexcept
         : _Protect_ptr(_Other._Protect_ptr)
     {
-        _Other._Protect_ptr = nullptr;
+        _Other._Protect_ptr = ::new std::atomic<void *>(nullptr);
     }
 
     hazard_pointer & operator=(hazard_pointer && _Other) noexcept
@@ -72,8 +68,7 @@ public:
         if (this != &_Other)
         {
             reset_protection();
-            _Protect_ptr = _Other._Protect_ptr;
-            _Other._Protect_ptr = nullptr;
+            std::swap(_Protect_ptr, _Other._Protect_ptr);
         }
         return *this;
     }
@@ -81,6 +76,7 @@ public:
     ~hazard_pointer()
     {
         reset_protection();
+        delete _Protect_ptr;
     }
 
 public:
@@ -101,9 +97,9 @@ public:
     {
         _Ty * _Ptr;
         do {
-            _Ptr = _Src.load();
-            _Protect_ptr = _Ptr;
-        } while (_Protect_ptr != _Src.load());
+            _Ptr = _Src.load(std::memory_order_acquire);
+            _Protect_ptr->store(_Ptr, std::memory_order_release);
+        } while (_Ptr != _Src.load(std::memory_order_acquire));
         return _Ptr;
     }
 
@@ -118,9 +114,9 @@ public:
     bool try_protect(_Ty * & _Ptr, const std::atomic<_Ty *> & _Src) noexcept
     {
         _Ty * _Expected = _Ptr;
-        _Ptr = _Src.load();
+        _Ptr = _Src.load(std::memory_order_acquire);
         if (_Ptr == _Expected) {
-            _Protect_ptr = _Ptr;
+            _Protect_ptr->store(_Ptr, std::memory_order_release);
             return true;
         }
         return false;
@@ -132,8 +128,8 @@ public:
     template <typename _Ty>
     void reset_protection(_Ty * _Ptr) noexcept
     {
-        if (_Protect_ptr == _Ptr) {
-            _Protect_ptr = nullptr;
+        if (_Protect_ptr->load(std::memory_order_relaxed) == _Ptr) {
+            _Protect_ptr->store(nullptr, std::memory_order_release);
         }
     }
 
@@ -142,7 +138,7 @@ public:
      */
     void reset_protection(std::nullptr_t = nullptr) noexcept
     {
-        _Protect_ptr = nullptr;
+        _Protect_ptr->store(nullptr, std::memory_order_release);
     }
 
     /**
