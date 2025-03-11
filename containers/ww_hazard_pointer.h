@@ -95,11 +95,13 @@ public:
     template <typename _Ty>
     _Ty * protect(const std::atomic<_Ty *> & _Src) noexcept
     {
+        static_assert(std::is_base_of_v<hazard_pointer_obj_base<_Ty>, _Ty>,
+            "Protected type must inherit from hazard_pointer_obj_base");
         _Ty * _Ptr;
         do {
             _Ptr = _Src.load(std::memory_order_acquire);
-            _Protect_ptr->store(_Ptr, std::memory_order_release);
-        } while (_Ptr != _Src.load(std::memory_order_acquire));
+            _Protect_ptr->store(reinterpret_cast<void *>(_Ptr), std::memory_order_seq_cst);
+        } while (_Ptr != _Src.load(std::memory_order_seq_cst));
         return _Ptr;
     }
 
@@ -113,12 +115,7 @@ public:
     template <typename _Ty>
     bool try_protect(_Ty * & _Ptr, const std::atomic<_Ty *> & _Src) noexcept
     {
-        _Ty * _Expected = _Ptr;
-        _Ptr = _Src.load(std::memory_order_acquire);
-        if (_Ptr == _Expected) {
-            _Protect_ptr->store(_Ptr, std::memory_order_release);
-            return true;
-        }
+        // 暂时不实现
         return false;
     }
 
@@ -128,7 +125,7 @@ public:
     template <typename _Ty>
     void reset_protection(_Ty * _Ptr) noexcept
     {
-        if (_Protect_ptr->load(std::memory_order_relaxed) == _Ptr) {
+        if (_Ptr == reinterpret_cast<_Ty *>(_Protect_ptr->load(std::memory_order_acquire))) {
             _Protect_ptr->store(nullptr, std::memory_order_release);
         }
     }
@@ -138,7 +135,8 @@ public:
      */
     void reset_protection(std::nullptr_t = nullptr) noexcept
     {
-        _Protect_ptr->store(nullptr, std::memory_order_release);
+        // 保持与protect()相同的memory_order_seq_cst
+        _Protect_ptr->store(nullptr, std::memory_order_seq_cst);
     }
 
     /**
