@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <memory>
+#include <thread>
 
 namespace wwlockfree
 {
@@ -49,7 +50,8 @@ public:
 class hazard_pointer
 {
 private:
-    std::atomic<void *> * _Protect_ptr;       // 指向保护指针的指针
+    std::atomic<void *> * _Protect_ptr;         // 指向保护指针的指针
+    std::atomic<std::thread::id> _Thread_id;    // 线程ID
 
 public:
     hazard_pointer() noexcept
@@ -135,7 +137,6 @@ public:
      */
     void reset_protection(std::nullptr_t = nullptr) noexcept
     {
-        // 保持与protect()相同的memory_order_seq_cst
         _Protect_ptr->store(nullptr, std::memory_order_seq_cst);
     }
 
@@ -155,5 +156,10 @@ void swap(hazard_pointer & _Left, hazard_pointer & _Right) noexcept
 {
     _Left.swap(_Right);
 }
+
+// 风险指针列表
+
+static constexpr std::size_t _Hazard_pointer_max = 128;             // 风险指针最大数量
+static hazard_pointer _Hazard_pointer_list[_Hazard_pointer_max];    // 风险指针列表
 
 } // namespace wwlockfree
