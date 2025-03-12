@@ -21,6 +21,12 @@ static hazard_pointer _Hazard_pointer_list[_Hazard_pointer_max];    // 风险指
  */
 bool _Search_hazard_pointer(void * _Ptr)
 {
+    for (std::size_t i = 0; i < _Hazard_pointer_max; ++i) {
+        if (_Hazard_pointer_list[i]._Protect_ptr->load() == _Ptr) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /**
@@ -170,7 +176,7 @@ public:
  */
 class hazard_pointer
 {
-private:
+public:
     std::atomic<void *> * _Protect_ptr;         // 指向保护指针的指针
     std::atomic<std::thread::id> _Thread_id;    // 线程ID
 

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <atomic>
-
 #include "ww_memory.h"
 #include "ww_hazard_pointer.h"
 
@@ -136,7 +134,7 @@ public:
          * 如果不判断就删除，则线程B可能访问已释放的内存
          */
         for (std::size_t i = 0; i < _Hazard_pointer_max; ++i) {
-            if (_Hazard_pointer_list[i]._Pointer.load() == _Old_head) {
+            if (_Hazard_pointer_list[i]._Protect_ptr.load() == _Old_head) {
                 // 其他线程持有该节点，标记为延迟删除
                 _Old_head->_Should_delay = true;
                 break;
