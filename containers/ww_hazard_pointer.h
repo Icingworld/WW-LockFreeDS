@@ -3,6 +3,7 @@
 #include <atomic>
 #include <memory>
 #include <thread>
+#include <functional>
 
 namespace wwlockfree
 {
@@ -142,7 +143,10 @@ protected:
     bool _Should_delay;    // 是否延迟删除
 
 protected:
-    hazard_pointer_obj_base() = default;
+    hazard_pointer_obj_base()
+        : _Should_delay(false)
+    {
+    }
 
     hazard_pointer_obj_base(const hazard_pointer_obj_base &) = default;
 

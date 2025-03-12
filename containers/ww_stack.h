@@ -24,7 +24,7 @@ public:
 
 public:
     _Stack_node(const value_type & _New_value)
-        : _Should_delay(false)
+        : hazard_pointer_obj_base<_Stack_node<_Ty>>()
         , _Value(_New_value)
         , _Next(nullptr)
     {
@@ -49,13 +49,14 @@ template <
 public:
     using value_type = _Ty;
     using allocator_type = _AllocTy;
+    using node_allocator_type = typename _AllocTy::template rebind<_Stack_node<_Ty>>::other;
 
     using _Node = _Stack_node<_Ty>;
     using _Node_pointer = _Stack_node<_Ty> *;
 
 public:
-    std::atomic<_Node_pointer> _Head;   // 栈顶
-    allocator_type _Allocator;          // 分配器
+    std::atomic<_Node_pointer> _Head;       // 栈顶
+    node_allocator_type _Allocator;         // 分配器
 
 public:
     stack()
